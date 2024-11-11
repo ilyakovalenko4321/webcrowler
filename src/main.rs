@@ -4,8 +4,8 @@ mod link_finder;
 use crate::link_finder::link_finder;
 use request_data::request_data;
 use std::collections::BTreeSet;
-use std::sync::{Arc, Mutex};
-use tokio::sync::Semaphore;
+use std::sync::Arc;
+use tokio::sync::{Mutex, Semaphore};
 
 const NUM_REQUESTS : usize = 10;
 
@@ -24,27 +24,29 @@ async fn main() {
         let visited = Arc::clone(&visited_links);
         let handle = tokio::spawn(async move {
             let _permit = permit;
-            let mut unvisited_new = unvisited.lock().unwrap();
-            let current_link: String = unvisited_new.pop_first().unwrap();
-            drop(unvisited_new);
+            let mut unvisited_new = unvisited.lock().await;
+            if let Some(current_link) = unvisited_new.pop_first() {
+                drop(unvisited_new);
 
-            println!("{:#?}", current_link);
+                println!("{:#?}", current_link);
 
-            let body = request_data(&current_link).await;
+                let body = request_data(&current_link).await;
 
-            let links_array = link_finder(&body);
-            let mut unvisited_new = unvisited.lock().unwrap();
-            let mut visited_new = visited.lock().unwrap();
-            for link in links_array {
-                if visited_new.get(&link).is_none() && link != current_link {
-                    unvisited_new.insert(link);
+                let links_array = link_finder(&body);
+                let mut unvisited_new = unvisited.lock().await;
+                let mut visited_new = visited.lock().await;
+                for link in links_array {
+                    if visited_new.get(&link).is_none() && link != current_link {
+                        unvisited_new.insert(link);
+                    }
                 }
+
+                visited_new.insert(current_link);
+
+                println!("{:#?}", visited_new.len());
+                println!("{:#?}", unvisited_new.len());
+
             }
-
-            visited_new.insert(current_link);
-
-            println!("{:#?}", visited_new.len());
-            println!("{:#?}", unvisited_new.len());
         });
         handles.push(handle);
 
