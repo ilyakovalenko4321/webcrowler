@@ -1,0 +1,10 @@
+[package]
+name = "untitled"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+reqwest = "0.12.9"
+tokio = { version = "1", features = ["full"] }
+regex = "1.11.1"
+
